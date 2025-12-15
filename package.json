@@ -19,9 +19,19 @@
     {
       "name": "dns-lookup",
       "title": "DNS Lookup",
-      "subtitle": "Fast & Global Check",
-      "description": "Check DNS propagation instantly using DoH (Only US DNS like Google, Cloudflare, AWS) or global propagation  with worldwilde DNS servers.",
-      "mode": "view"
+      "subtitle": "Fast & Global DNS Check",
+      "description": "Check DNS propagation instantly using DoH (Google, Cloudflare, Alibaba, DNS.SB) or global propagation with worldwide DNS servers.",
+      "mode": "view",
+      "preferences": [
+        {
+          "name": "globalpingToken",
+          "type": "password",
+          "required": false,
+          "title": "Globalping API Key",
+          "description": "Optional: Get a free API key from https://www.globalping.io/ to use Global Check feature with higher limits.",
+          "placeholder": "gp_abc123..."
+        }
+      ]
     }
   ],
   "dependencies": {
