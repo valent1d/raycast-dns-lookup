@@ -1,4 +1,16 @@
-import { List, ActionPanel, Action, Icon, Color, showToast, Toast, LaunchProps, getPreferenceValues, open, openExtensionPreferences } from "@raycast/api";
+import {
+  List,
+  ActionPanel,
+  Action,
+  Icon,
+  Color,
+  showToast,
+  Toast,
+  LaunchProps,
+  getPreferenceValues,
+  open,
+  openExtensionPreferences,
+} from "@raycast/api";
 import { useState, useEffect, useRef } from "react";
 
 // --- UTILS ---
@@ -31,7 +43,9 @@ interface GlobalpingAnswer {
   preference?: number;
 }
 
-interface GlobalpingPostResponse { id: string; }
+interface GlobalpingPostResponse {
+  id: string;
+}
 interface GlobalpingGetResponse {
   results: {
     probe: { city: string; country: string; network: string };
@@ -62,12 +76,12 @@ const RECORD_TYPES = ["A", "AAAA", "CNAME", "MX", "NS", "TXT", "SOA", "SRV"];
 export default function Command(props: LaunchProps<{ arguments: { domain?: string } }>) {
   const [domain, setDomain] = useState<string>(props.arguments.domain || "");
   const [recordType, setRecordType] = useState<string>("A");
-  
+
   // UX States
   const [viewMode, setViewMode] = useState<"fast" | "global">("fast");
   const [results, setResults] = useState<DnsResult[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  
+
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const formatSOA = (rawData: string) => {
@@ -79,7 +93,7 @@ export default function Command(props: LaunchProps<{ arguments: { domain?: strin
   // --- FAST CHECK ---
   const runFastCheck = async (targetDomain: string, rType: string) => {
     if (!targetDomain || !targetDomain.includes(".")) return;
-    
+
     setViewMode("fast");
     if (abortControllerRef.current) abortControllerRef.current.abort();
     const controller = new AbortController();
@@ -89,7 +103,13 @@ export default function Command(props: LaunchProps<{ arguments: { domain?: strin
 
     const providers = [
       { id: "google", name: "Google", displayIp: "8.8.8.8", url: "https://dns.google/resolve", flag: "🇺🇸" },
-      { id: "cloudflare", name: "Cloudflare", displayIp: "1.1.1.1", url: "https://cloudflare-dns.com/dns-query", flag: "☁️" },
+      {
+        id: "cloudflare",
+        name: "Cloudflare",
+        displayIp: "1.1.1.1",
+        url: "https://cloudflare-dns.com/dns-query",
+        flag: "☁️",
+      },
       { id: "dnssb", name: "DNS.SB", displayIp: "185.222.222.222", url: "https://doh.dns.sb/dns-query", flag: "🇩🇪" },
       { id: "alidns", name: "Alibaba", displayIp: "223.5.5.5", url: "https://dns.alidns.com/resolve", flag: "🇨🇳" },
     ];
@@ -109,41 +129,41 @@ export default function Command(props: LaunchProps<{ arguments: { domain?: strin
       try {
         const timeoutId = setTimeout(() => controller.abort(), 5000);
         const response = await fetch(`${p.url}?name=${targetDomain}&type=${rType}`, {
-          headers: { "Accept": "application/dns-json" },
-          signal: controller.signal
+          headers: { Accept: "application/dns-json" },
+          signal: controller.signal,
         });
         clearTimeout(timeoutId);
 
         if (!response.ok) {
           throw new Error("Service unavailable");
         }
-        
+
         const data = (await response.json()) as DohResponse;
-        
+
         let output = "No records found";
-        const status = "success"; 
-        
+        const status = "success";
+
         let records = data.Answer;
         if ((!records || records.length === 0) && (rType === "SOA" || rType === "NS")) {
-            records = data.Authority;
+          records = data.Authority;
         }
 
         if (records && Array.isArray(records) && records.length > 0) {
-          output = records.map((a) => rType === "SOA" ? formatSOA(a.data) : a.data).join(", ");
+          output = records.map((a) => (rType === "SOA" ? formatSOA(a.data) : a.data)).join(", ");
         }
 
-        setResults((prev) => 
-          prev.map((item) => item.id === p.id ? { ...item, result: output, status: status } : item)
+        setResults((prev) =>
+          prev.map((item) => (item.id === p.id ? { ...item, result: output, status: status } : item)),
         );
       } catch (error) {
-        if (error instanceof Error && error.name === 'AbortError') return;
-        
-        setResults((prev) => 
-          prev.map((item) => item.id === p.id ? { ...item, result: "Unavailable", status: "error" } : item)
+        if (error instanceof Error && error.name === "AbortError") return;
+
+        setResults((prev) =>
+          prev.map((item) => (item.id === p.id ? { ...item, result: "Unavailable", status: "error" } : item)),
         );
       }
     });
-    
+
     await Promise.allSettled(fetchPromises);
     setIsLoading(false);
   };
@@ -154,11 +174,11 @@ export default function Command(props: LaunchProps<{ arguments: { domain?: strin
       await showToast({
         style: Toast.Style.Failure,
         title: "Invalid Domain",
-        message: "Please enter a valid domain name"
+        message: "Please enter a valid domain name",
       });
       return;
     }
-    
+
     setViewMode("global");
     setIsLoading(true);
 
@@ -166,12 +186,12 @@ export default function Command(props: LaunchProps<{ arguments: { domain?: strin
     const hasToken = !!preferences.globalpingToken;
 
     if (isRefresh && results.length > 0) {
-        // Refresh mode: keep the items but show they are loading
-        setResults((prev) => prev.map(r => ({ ...r, status: "loading", result: "Refreshing..." })));
+      // Refresh mode: keep the items but show they are loading
+      setResults((prev) => prev.map((r) => ({ ...r, status: "loading", result: "Refreshing..." })));
     } else {
-        // New search mode: clear everything
-        // This will trigger the display of the EmptyView "Loading" while keeping the progress bar
-        setResults([]);
+      // New search mode: clear everything
+      // This will trigger the display of the EmptyView "Loading" while keeping the progress bar
+      setResults([]);
     }
 
     try {
@@ -180,16 +200,16 @@ export default function Command(props: LaunchProps<{ arguments: { domain?: strin
         target: domain,
         limit: 8,
         locations: [
-            { country: "US" },
-            { country: "GB" },
-            { country: "FR" },
-            { country: "DE" },
-            { country: "JP" },
-            { country: "IN" },
-            { country: "BR" },
-            { country: "AU" }
+          { country: "US" },
+          { country: "GB" },
+          { country: "FR" },
+          { country: "DE" },
+          { country: "JP" },
+          { country: "IN" },
+          { country: "BR" },
+          { country: "AU" },
         ],
-        measurementOptions: { query: { type: recordType } }
+        measurementOptions: { query: { type: recordType } },
       };
 
       const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -232,7 +252,7 @@ export default function Command(props: LaunchProps<{ arguments: { domain?: strin
           }
           return;
         }
-        
+
         if (postRes.status === 401) {
           await showToast({
             style: Toast.Style.Failure,
@@ -248,50 +268,50 @@ export default function Command(props: LaunchProps<{ arguments: { domain?: strin
           });
           return;
         }
-        
+
         throw new Error("Unable to connect to Globalping");
       }
 
       const postData = (await postRes.json()) as GlobalpingPostResponse;
-      
+
       await new Promise((resolve) => setTimeout(resolve, 3000));
-      
+
       const getRes = await fetch(`https://api.globalping.io/v1/measurements/${postData.id}`);
       if (!getRes.ok) {
         throw new Error("Unable to retrieve results");
       }
-      
+
       const data = (await getRes.json()) as GlobalpingGetResponse;
-      
+
       const globalResults: DnsResult[] = data.results.map((r) => {
         let finalResult = "No records found";
         let finalStatus: "success" | "error" | "warning" = "success";
 
         if (r.result.status === "finished" && r.result.answers && r.result.answers.length > 0) {
-            finalResult = r.result.answers.map((a) => {
-                if (a.value) return a.value;
-                if (a.target) return `${a.priority || 0} ${a.weight || 0} ${a.port || 0} ${a.target}`;
-                if (a.exchange) return `${a.preference || 0} ${a.exchange}`;
-                return JSON.stringify(a);
-            }).join(", ");
-        } 
-        else if (r.result.status === "finished") {
-             finalResult = "No records found";
-             finalStatus = "success";
-        }
-        else if (r.result.status === "failed") {
-            finalResult = "Probe Error";
-            finalStatus = "error";
+          finalResult = r.result.answers
+            .map((a) => {
+              if (a.value) return a.value;
+              if (a.target) return `${a.priority || 0} ${a.weight || 0} ${a.port || 0} ${a.target}`;
+              if (a.exchange) return `${a.preference || 0} ${a.exchange}`;
+              return JSON.stringify(a);
+            })
+            .join(", ");
+        } else if (r.result.status === "finished") {
+          finalResult = "No records found";
+          finalStatus = "success";
+        } else if (r.result.status === "failed") {
+          finalResult = "Probe Error";
+          finalStatus = "error";
         }
 
         return {
-            id: `global-${r.probe.city}-${Math.random()}`,
-            provider: `${r.probe.city}`, 
-            serverInfo: r.probe.network || r.probe.country, 
-            flag: getFlagEmoji(r.probe.country),
-            result: finalResult,
-            status: finalStatus,
-            type: "global",
+          id: `global-${r.probe.city}-${Math.random()}`,
+          provider: `${r.probe.city}`,
+          serverInfo: r.probe.network || r.probe.country,
+          flag: getFlagEmoji(r.probe.country),
+          result: finalResult,
+          status: finalStatus,
+          type: "global",
         };
       });
 
@@ -300,25 +320,24 @@ export default function Command(props: LaunchProps<{ arguments: { domain?: strin
       }
 
       setResults(globalResults);
-      
+
       if (!isRefresh) {
         await showToast({
           style: Toast.Style.Success,
-          title: "Global Check Complete"
+          title: "Global Check Complete",
         });
       }
-      
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Something went wrong";
-      
+
       await showToast({
         style: Toast.Style.Failure,
         title: "Global Check Failed",
-        message: errorMessage
+        message: errorMessage,
       });
-      
+
       if (isRefresh) {
-        setResults((prev) => prev.map(r => ({ ...r, status: "error", result: "Update failed" })));
+        setResults((prev) => prev.map((r) => ({ ...r, status: "error", result: "Update failed" })));
       }
     } finally {
       setIsLoading(false);
@@ -332,7 +351,7 @@ export default function Command(props: LaunchProps<{ arguments: { domain?: strin
   }, []);
 
   // --- RENDER ---
-  
+
   return (
     <List
       searchText={domain}
@@ -345,40 +364,48 @@ export default function Command(props: LaunchProps<{ arguments: { domain?: strin
           value={recordType}
           onChange={(newValue) => {
             setRecordType(newValue);
-            if(domain.includes(".")) {
-                if (viewMode === "fast") runFastCheck(domain, newValue);
-                else runGlobalCheck(false);
+            if (domain.includes(".")) {
+              if (viewMode === "fast") runFastCheck(domain, newValue);
+              else runGlobalCheck(false);
             }
           }}
         >
-          {RECORD_TYPES.map((t) => <List.Dropdown.Item key={t} title={t} value={t} />)}
+          {RECORD_TYPES.map((t) => (
+            <List.Dropdown.Item key={t} title={t} value={t} />
+          ))}
         </List.Dropdown>
       }
     >
       {results.length === 0 ? (
         <List.EmptyView
-          icon={isLoading ? { source: Icon.CircleProgress50, tintColor: Color.Blue } : { source: Icon.Globe, tintColor: Color.Blue }}
+          icon={
+            isLoading
+              ? { source: Icon.CircleProgress50, tintColor: Color.Blue }
+              : { source: Icon.Globe, tintColor: Color.Blue }
+          }
           title={isLoading ? "Loading..." : "DNS Lookup"}
           description={isLoading ? "Querying global probes..." : "Enter a domain to start the lookup."}
           actions={
-             !isLoading ? (
-                <ActionPanel>
-                   <Action title="Run Fast Check" onAction={() => runFastCheck(domain, recordType)} />
-                </ActionPanel>
-             ) : undefined
+            !isLoading ? (
+              <ActionPanel>
+                <Action title="Run Fast Check" onAction={() => runFastCheck(domain, recordType)} />
+              </ActionPanel>
+            ) : undefined
           }
         />
       ) : (
-        <List.Section title={viewMode === "fast" ? "🚀 Fast Check (Instant)" : "🌍 Global Check (Worldwide Propagation)"}>
-           {results.map((item) => (
-              <DnsListItem 
-                key={item.id} 
-                item={item} 
-                onRefresh={() => viewMode === "fast" ? runFastCheck(domain, recordType) : runGlobalCheck(true)}
-                onSwitchToGlobal={viewMode === "fast" ? () => runGlobalCheck(false) : undefined}
-                onSwitchToFast={viewMode === "global" ? () => runFastCheck(domain, recordType) : undefined}
-              />
-            ))}
+        <List.Section
+          title={viewMode === "fast" ? "🚀 Fast Check (Instant)" : "🌍 Global Check (Worldwide Propagation)"}
+        >
+          {results.map((item) => (
+            <DnsListItem
+              key={item.id}
+              item={item}
+              onRefresh={() => (viewMode === "fast" ? runFastCheck(domain, recordType) : runGlobalCheck(true))}
+              onSwitchToGlobal={viewMode === "fast" ? () => runGlobalCheck(false) : undefined}
+              onSwitchToFast={viewMode === "global" ? () => runFastCheck(domain, recordType) : undefined}
+            />
+          ))}
         </List.Section>
       )}
     </List>
@@ -389,35 +416,61 @@ export default function Command(props: LaunchProps<{ arguments: { domain?: strin
 
 function DnsListItem({ item, onRefresh, onSwitchToGlobal, onSwitchToFast }: DnsListItemProps) {
   const hasMultipleResults = item.result.includes(", ");
-  
+
   return (
     <List.Item
-      icon={item.flag} 
+      icon={item.flag}
       title={item.provider}
-      subtitle={item.serverInfo} 
+      subtitle={item.serverInfo}
       accessories={[
-        { 
-          text: { value: item.result, color: item.status === "error" ? Color.Red : item.status === "warning" ? Color.Orange : Color.PrimaryText },
-          tooltip: item.result.split(", ").join("\n") 
+        {
+          text: {
+            value: item.result,
+            color: item.status === "error" ? Color.Red : item.status === "warning" ? Color.Orange : Color.PrimaryText,
+          },
+          tooltip: item.result.split(", ").join("\n"),
         },
-        { 
-          icon: item.status === "success" ? { source: Icon.Check, tintColor: Color.Green } 
-              : item.status === "loading" ? { source: Icon.Circle, tintColor: Color.Yellow } 
-              : item.status === "warning" ? { source: Icon.MinusCircle, tintColor: Color.Orange }
-              : { source: Icon.Xmark, tintColor: Color.Red } 
-        }
+        {
+          icon:
+            item.status === "success"
+              ? { source: Icon.Check, tintColor: Color.Green }
+              : item.status === "loading"
+                ? { source: Icon.Circle, tintColor: Color.Yellow }
+                : item.status === "warning"
+                  ? { source: Icon.MinusCircle, tintColor: Color.Orange }
+                  : { source: Icon.Xmark, tintColor: Color.Red },
+        },
       ]}
       actions={
         <ActionPanel>
-            {hasMultipleResults && item.status === "success" ? (
-                <Action.Push title="View Details" icon={Icon.List} target={<DrillDownView item={item} />} />
-            ) : (
-                <Action.CopyToClipboard content={item.result} title="Copy Result" />
-            )}
-            {onSwitchToGlobal && <Action title="Run Global Check" icon={Icon.Globe} shortcut={{ modifiers: ["cmd", "shift"], key: "enter" }} onAction={onSwitchToGlobal} />}
-            {onSwitchToFast && <Action title="Return to Fast Check" icon={Icon.Bolt} shortcut={{ modifiers: ["cmd", "shift"], key: "enter" }} onAction={onSwitchToFast} />}
-            <Action title="Refresh" icon={Icon.RotateClockwise} shortcut={{ modifiers: ["cmd"], key: "r" }} onAction={onRefresh} />
-            {hasMultipleResults && <Action.CopyToClipboard title="Copy All Results" content={item.result} />}
+          {hasMultipleResults && item.status === "success" ? (
+            <Action.Push title="View Details" icon={Icon.List} target={<DrillDownView item={item} />} />
+          ) : (
+            <Action.CopyToClipboard content={item.result} title="Copy Result" />
+          )}
+          {onSwitchToGlobal && (
+            <Action
+              title="Run Global Check"
+              icon={Icon.Globe}
+              shortcut={{ modifiers: ["cmd", "shift"], key: "enter" }}
+              onAction={onSwitchToGlobal}
+            />
+          )}
+          {onSwitchToFast && (
+            <Action
+              title="Return to Fast Check"
+              icon={Icon.Bolt}
+              shortcut={{ modifiers: ["cmd", "shift"], key: "enter" }}
+              onAction={onSwitchToFast}
+            />
+          )}
+          <Action
+            title="Refresh"
+            icon={Icon.RotateClockwise}
+            shortcut={{ modifiers: ["cmd"], key: "r" }}
+            onAction={onRefresh}
+          />
+          {hasMultipleResults && <Action.CopyToClipboard title="Copy All Results" content={item.result} />}
         </ActionPanel>
       }
     />
@@ -425,25 +478,25 @@ function DnsListItem({ item, onRefresh, onSwitchToGlobal, onSwitchToFast }: DnsL
 }
 
 function DrillDownView({ item }: { item: DnsResult }) {
-    const records = item.result.split(", ");
-    return (
-        <List navigationTitle={`${item.provider} - Details`}>
-            <List.Section title={`Results via ${item.serverInfo}`}>
-                {records.map((record: string, index: number) => (
-                    <List.Item
-                        key={index}
-                        title={record}
-                        icon={{ source: Icon.Dot, tintColor: Color.Blue }}
-                        accessories={[{ tooltip: record }]}
-                        actions={
-                            <ActionPanel>
-                                <Action.CopyToClipboard content={record} />
-                                <Action.CopyToClipboard title="Copy All" content={item.result} />
-                            </ActionPanel>
-                        }
-                    />
-                ))}
-            </List.Section>
-        </List>
-    );
+  const records = item.result.split(", ");
+  return (
+    <List navigationTitle={`${item.provider} - Details`}>
+      <List.Section title={`Results via ${item.serverInfo}`}>
+        {records.map((record: string, index: number) => (
+          <List.Item
+            key={index}
+            title={record}
+            icon={{ source: Icon.Dot, tintColor: Color.Blue }}
+            accessories={[{ tooltip: record }]}
+            actions={
+              <ActionPanel>
+                <Action.CopyToClipboard content={record} />
+                <Action.CopyToClipboard title="Copy All" content={item.result} />
+              </ActionPanel>
+            }
+          />
+        ))}
+      </List.Section>
+    </List>
+  );
 }
